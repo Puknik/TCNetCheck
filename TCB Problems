@@ -1,0 +1,118 @@
+Macro "Time_Calculation"
+	InputDirectory = null
+	path = null
+	RunMacro("TCB Init")
+	RunDbox("TimeCa")
+endMacro
+
+Dbox "TimeCa",,80.5,30 title:"Calculate Time"
+		Frame 43, 0.5,35,4 Prompt: "Layer Selection"
+		Frame 1, 7.5,35,6 Prompt: "Speed Fields"
+		Frame 42, 7.5,35,6 Prompt: "Length Field"
+		Frame 1, 14.5,35,6 Prompt: "Time Fields"
+		Frame 39, 16,32,2.5 Prompt: "Path"
+		text "Road Network Directory" 40,17,30 Framed variable: Directorystring 
+	
+		button "Start" 5,1,20
+			do
+				lyrNames = GetLayerNames()
+				RunMacro("choosefolder")
+			enditem
+		
+		popdown Menu 45,2,30,4
+			List: lyrNames 
+			Variable: ml
+			
+		button "Search" 5,3,20
+			do
+				RunMacro("SearchAtt")
+				Directorystring = InputDirectory + "\\" + lyrNames[ml]
+			enditem
+		
+		Checkbox 24,6
+			prompt:"Dual Fields"
+			Variable: dualfield
+		
+		Scroll List "Speed" 5,9.0,30,4
+				List: cols
+				multiple
+				Variable: sp
+		
+		Scroll List "Length" 45,9.0,30,4
+			List: cols
+			Variable: lt
+
+		Scroll List "Time" 5,16.0,30,4
+			List: cols
+			multiple
+			Variable: Timecol
+			
+		button "Calculate" 10,25,25
+			do
+				RunMacro("QuickCheck")
+			enditem
+		button "Cancel" 45,25,25 Cancel
+		do
+			return()
+		enditem
+
+Macro "SearchAtt"
+
+		do
+		Setlayer(lyrNames[ml])
+			CreateEditor(lyrNames[ml] + " Table", , , )
+			cols = GetColumnArray()
+		enditem
+
+Macro "QuickCheck"
+		do	
+			if (sp = null) or (lt = null)  then RunMacro("Message") else RunMacro("New_columns")
+		enditem
+Macro "Message"
+		do
+			ShowMessage("There was no select fields or more than two fields selected" + "\n")
+		enditem
+
+Macro "New_columns"
+	RunMacro("TCB Init")
+	do	
+		CloseEditor(lyrNames[ml] + " Table")
+		
+		path = Directorystring + "\\Road.BIN"
+		
+		ShowMessage(path)
+		
+		if dualfield = 0 then	 do
+				Opts = null
+				Opts.Input.[Dataview Set] = {path, "Road"}
+				Opts.Global.Fields = {Timecol[1]}
+				Opts.Global.Method = "Formula"
+				Opts.Global.Parameter = Lt / sp[1]
+				
+		ret_value = RunMacro("TCB Run Operation", "Fill Dataview", Opts) 
+		end
+		
+		 else  do
+				Opts = null
+				Opts.Input.[Dataview Set] = {path, "Road"}
+				Opts.Global.Fields = {Timecol[1]}
+				Opts.Global.Method = "Formula"
+				Opts.Global.Parameter = Lt / sp[1]
+
+				Opts = null
+				Opts.Input.[Dataview Set] = {path, "Road"}
+				Opts.Global.Fields = {Timecol[2]}
+				Opts.Global.Method = "Formula"
+				Opts.Global.Parameter = Lt / sp[2]
+			
+			ret_value = RunMacro("TCB Run Operation", "Fill Dataview", Opts)
+		end
+	
+	enditem
+
+Macro "choosefolder"
+		do
+			InputDirectory = ChooseDirectory("Choose Road Network Directory", {{"Initial Directory", "C:\\"}})
+enditem
+
+endDbox
